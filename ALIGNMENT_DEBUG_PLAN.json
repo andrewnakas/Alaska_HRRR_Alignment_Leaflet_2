@@ -1,0 +1,50 @@
+{
+  "grib_grid": {
+    "ny": 919,
+    "nx": 1299
+  },
+  "image_size": {
+    "width": 12170,
+    "height": 1200
+  },
+  "data_extent": {
+    "top": 129,
+    "bottom": 1176,
+    "left": 0,
+    "right": 12169
+  },
+  "corner_correspondences": {
+    "GRIB(0,0)": {
+      "grib_row": 0,
+      "grib_col": 0,
+      "lat": 41.612949,
+      "lon": -174.882874,
+      "expected_image_col": 0,
+      "expected_image_row": 129
+    },
+    "GRIB(0,nx-1)": {
+      "grib_row": 0,
+      "grib_col": 1298,
+      "lat": 51.72555953400505,
+      "lon": -128.473102975241,
+      "expected_image_col": 12169,
+      "expected_image_row": 129
+    },
+    "GRIB(ny-1,0)": {
+      "grib_row": 918,
+      "grib_col": 0,
+      "lat": 55.60544810098394,
+      "lon": 156.43684261143042,
+      "expected_image_col": 0,
+      "expected_image_row": 1176
+    },
+    "GRIB(ny-1,nx-1)": {
+      "grib_row": 918,
+      "grib_col": 1298,
+      "lat": 76.3376569531758,
+      "lon": -115.7757371578563,
+      "expected_image_col": 12169,
+      "expected_image_row": 1176
+    }
+  }
+}
