@@ -900,7 +900,7 @@
       179.9943767625712,
       77.10081451458335
     ],
-    "image_url": "https://firebasestorage.googleapis.com/v0/b/tree-sixty.firebasestorage.app/o/radar%2Fhrrr%2F20251109_1800%2Falaska%2Fhrrr_east_0000.webp?alt=media"
+    "image_url": "images/alaska_hrrr_eastern.webp"
   },
   "western": {
     "bounds": [
@@ -909,6 +909,6 @@
       180.00812367474123,
       77.10081451458335
     ],
-    "image_url": "https://firebasestorage.googleapis.com/v0/b/tree-sixty.firebasestorage.app/o/radar%2Fhrrr%2F20251109_1800%2Falaska%2Fhrrr_west_0000.webp?alt=media"
+    "image_url": "images/alaska_hrrr_western.webp"
   }
 }

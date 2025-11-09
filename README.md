@@ -44,13 +44,36 @@ Open http://localhost:8000 in your browser.
 
 ### Update Test Data
 
-To fetch the latest production data:
+To fetch the latest production data and images:
 
 ```bash
+# Fetch latest data structure
 curl -s "https://get-hrrr-forecast-pxvei6zf7a-uc.a.run.app" | \
   python3 -c "import sys, json; d=json.load(sys.stdin); alaska = d['data']['forecast_times'][0]['alaska']; print(json.dumps(alaska, indent=2))" \
   > test-data.json
+
+# Download latest radar images (bypasses CORS issues)
+# Extract URLs from test-data.json and download
+WEST_URL=$(python3 -c "import json; print(json.load(open('test-data.json'))['western']['image_url'])")
+EAST_URL=$(python3 -c "import json; print(json.load(open('test-data.json'))['eastern']['image_url'])")
+
+curl -s "$WEST_URL" -o images/alaska_hrrr_western.webp
+curl -s "$EAST_URL" -o images/alaska_hrrr_eastern.webp
+
+# Update test-data.json to use local images
+python3 -c "
+import json
+with open('test-data.json', 'r+') as f:
+    data = json.load(f)
+    data['western']['image_url'] = 'images/alaska_hrrr_western.webp'
+    data['eastern']['image_url'] = 'images/alaska_hrrr_eastern.webp'
+    f.seek(0)
+    json.dump(data, f, indent=2)
+    f.truncate()
+"
 ```
+
+**Note**: Images are hosted locally to avoid CORS restrictions from Firebase Storage when accessing via GitHub Pages.
 
 ## Features
 
@@ -162,7 +185,10 @@ When alignment is perfect:
 ## Files
 
 - `index.html` - Interactive test harness with Leaflet map
-- `test-data.json` - Sample data from production API
+- `test-data.json` - Sample HRRR Alaska data from production API
+- `images/` - Radar imagery (locally hosted to avoid CORS issues)
+  - `alaska_hrrr_western.webp` - Western hemisphere radar image
+  - `alaska_hrrr_eastern.webp` - Eastern hemisphere radar image
 - `.github/workflows/deploy.yml` - Auto-deployment to GitHub Pages
 - `README.md` - This file
 
