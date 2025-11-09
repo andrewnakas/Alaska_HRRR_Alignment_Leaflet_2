@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Interactive HRRR Alignment Tool</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+        }
+        #map {
+            flex: 1;
+            height: 100vh;
+        }
+        #controls {
+            width: 350px;
+            padding: 20px;
+            background: #f8f9fa;
+            overflow-y: auto;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0 0 20px 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #495057;
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        .slider-container label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #6c757d;
+        }
+        .slider-container input[type="range"] {
+            width: 100%;
+        }
+        .value-display {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #0066cc;
+            margin-top: 3px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-primary {
+            background: #0066cc;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0052a3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        #output {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .info {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="controls">
+        <h1>🎯 Interactive Alignment Tool</h1>
+
+        <div class="control-group">
+            <h3>Layer Visibility</h3>
+            <label><input type="checkbox" id="showImage" checked> Show HRRR Image</label><br>
+            <label><input type="checkbox" id="showBoundary" checked> Show Boundary Polygon</label><br>
+            <label style="margin-top: 10px;">Opacity: <span id="opacityValue">70%</span></label>
+            <input type="range" id="opacity" min="0" max="100" value="70">
+        </div>
+
+        <div class="control-group">
+            <h3>Bounds Adjustment</h3>
+
+            <div class="slider-container">
+                <label>West (Left Edge)</label>
+                <input type="range" id="west" min="-200" max="-160" step="0.01" value="-179.985341">
+                <div class="value-display"><span id="westValue">-179.985341</span>°</div>
+            </div>
+
+            <div class="slider-container">
+                <label>South (Bottom Edge)</label>
+                <input type="range" id="south" min="35" max="45" step="0.01" value="40.834286">
+                <div class="value-display"><span id="southValue">40.834286</span>°</div>
+            </div>
+
+            <div class="slider-container">
+                <label>East (Right Edge)</label>
+                <input type="range" id="east" min="160" max="200" step="0.01" value="180.014659">
+                <div class="value-display"><span id="eastValue">180.014659</span>°</div>
+            </div>
+
+            <div class="slider-container">
+                <label>North (Top Edge)</label>
+                <input type="range" id="north" min="75" max="85" step="0.01" value="81.460175">
+                <div class="value-display"><span id="northValue">81.460175</span>°</div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Fine Tuning</h3>
+            <label>Step Size:</label>
+            <select id="stepSize">
+                <option value="0.001">0.001° (~110m)</option>
+                <option value="0.01" selected>0.01° (~1.1km)</option>
+                <option value="0.1">0.1° (~11km)</option>
+                <option value="1">1° (~111km)</option>
+            </select>
+
+            <div style="margin-top: 10px;">
+                <button class="btn-secondary" onclick="adjustBounds('north', 1)">▲ North +</button>
+                <div style="display: flex; gap: 5px; margin: 5px 0;">
+                    <button class="btn-secondary" style="flex: 1;" onclick="adjustBounds('west', -1)">◀ West -</button>
+                    <button class="btn-secondary" style="flex: 1;" onclick="adjustBounds('east', 1)">East + ▶</button>
+                </div>
+                <button class="btn-secondary" onclick="adjustBounds('south', -1)">▼ South -</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Presets</h3>
+            <button class="btn-primary" onclick="loadPreset('current')">Load Current Bounds</button>
+            <button class="btn-primary" onclick="loadPreset('calculated')">Load Calculated Bounds</button>
+            <button class="btn-secondary" onclick="resetBounds()">Reset to Default</button>
+        </div>
+
+        <div class="control-group">
+            <h3>Export Settings</h3>
+            <button class="btn-success" onclick="copyBounds()">📋 Copy Bounds to Clipboard</button>
+            <button class="btn-success" onclick="exportJSON()">💾 Export as JSON</button>
+            <div id="output"></div>
+        </div>
+
+        <div class="info">
+            <strong>Tips:</strong><br>
+            • Use sliders for rough adjustments<br>
+            • Use arrow buttons for fine-tuning<br>
+            • Compare image edges with red boundary<br>
+            • When aligned, copy bounds to update test-data.json
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map', {
+            center: [64.0, -152.0],
+            zoom: 4,
+            worldCopyJump: false,
+            maxBounds: [[-90, -360], [90, 360]]
+        });
+
+        // Add base layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            noWrap: false
+        }).addTo(map);
+
+        // State
+        let imageOverlays = [];
+        let boundaryPolygon = null;
+        let boundaryData = null;
+
+        // Load test data
+        fetch('test-data.json')
+            .then(r => r.json())
+            .then(data => {
+                boundaryData = data.boundary_polygon;
+                updateMap();
+            });
+
+        function updateMap() {
+            // Remove existing overlays
+            imageOverlays.forEach(overlay => map.removeLayer(overlay));
+            imageOverlays = [];
+            if (boundaryPolygon) {
+                map.removeLayer(boundaryPolygon);
+                boundaryPolygon = null;
+            }
+
+            // Get current bounds
+            const west = parseFloat(document.getElementById('west').value);
+            const south = parseFloat(document.getElementById('south').value);
+            const east = parseFloat(document.getElementById('east').value);
+            const north = parseFloat(document.getElementById('north').value);
+            const opacity = parseInt(document.getElementById('opacity').value) / 100;
+
+            // Add images if enabled (4-way wrapping)
+            if (document.getElementById('showImage').checked) {
+                const imageUrl = 'images/alaska_hrrr_western.webp';
+
+                const wraps = [
+                    [[south, west], [north, east]],
+                    [[south, west + 360], [north, east + 360]],
+                    [[south, west - 360], [north, east - 360]],
+                    [[south, west + 720], [north, east + 720]]
+                ];
+
+                wraps.forEach(bounds => {
+                    const overlay = L.imageOverlay(imageUrl, bounds, {
+                        opacity: opacity,
+                        interactive: false
+                    }).addTo(map);
+                    imageOverlays.push(overlay);
+                });
+            }
+
+            // Add boundary if enabled
+            if (document.getElementById('showBoundary').checked && boundaryData) {
+                const coords = boundaryData.map(p => [p.lat, p.lon]);
+                boundaryPolygon = L.polygon(coords, {
+                    color: '#ff0000',
+                    weight: 2,
+                    fillOpacity: 0,
+                    interactive: false
+                }).addTo(map);
+
+                // Add wrapped versions
+                [-360, 360, -720, 720].forEach(offset => {
+                    const wrappedCoords = boundaryData.map(p => [p.lat, p.lon + offset]);
+                    L.polygon(wrappedCoords, {
+                        color: '#ff0000',
+                        weight: 2,
+                        fillOpacity: 0,
+                        interactive: false
+                    }).addTo(map);
+                });
+            }
+        }
+
+        // Event listeners
+        ['west', 'south', 'east', 'north'].forEach(id => {
+            const slider = document.getElementById(id);
+            slider.addEventListener('input', function() {
+                document.getElementById(id + 'Value').textContent = this.value;
+                updateMap();
+            });
+        });
+
+        document.getElementById('opacity').addEventListener('input', function() {
+            document.getElementById('opacityValue').textContent = this.value + '%';
+            updateMap();
+        });
+
+        document.getElementById('showImage').addEventListener('change', updateMap);
+        document.getElementById('showBoundary').addEventListener('change', updateMap);
+
+        function adjustBounds(direction, multiplier) {
+            const step = parseFloat(document.getElementById('stepSize').value);
+            const slider = document.getElementById(direction);
+            const newValue = parseFloat(slider.value) + (step * multiplier);
+            slider.value = newValue.toFixed(6);
+            document.getElementById(direction + 'Value').textContent = slider.value;
+            updateMap();
+        }
+
+        function loadPreset(type) {
+            if (type === 'current') {
+                // Bounds from test-data.json (current calculated)
+                setBounds(-179.985341, 40.834286, 180.014659, 81.460175);
+            } else if (type === 'calculated') {
+                // Original calculated bounds
+                setBounds(-179.985341, 40.834286, 180.014659, 81.460175);
+            }
+        }
+
+        function setBounds(west, south, east, north) {
+            document.getElementById('west').value = west;
+            document.getElementById('south').value = south;
+            document.getElementById('east').value = east;
+            document.getElementById('north').value = north;
+
+            document.getElementById('westValue').textContent = west;
+            document.getElementById('southValue').textContent = south;
+            document.getElementById('eastValue').textContent = east;
+            document.getElementById('northValue').textContent = north;
+
+            updateMap();
+        }
+
+        function resetBounds() {
+            setBounds(-179.985341, 40.834286, 180.014659, 81.460175);
+        }
+
+        function copyBounds() {
+            const bounds = getBounds();
+            const text = `[${bounds.west}, ${bounds.south}, ${bounds.east}, ${bounds.north}]`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                document.getElementById('output').textContent = 'Copied to clipboard!\n\n' + text;
+            });
+        }
+
+        function exportJSON() {
+            const bounds = getBounds();
+            const output = {
+                bounds: [bounds.west, bounds.south, bounds.east, bounds.north],
+                leaflet_format: {
+                    west: bounds.west,
+                    south: bounds.south,
+                    east: bounds.east,
+                    north: bounds.north
+                },
+                notes: 'Manually adjusted bounds from interactive tool'
+            };
+
+            const text = JSON.stringify(output, null, 2);
+            document.getElementById('output').textContent = text;
+
+            // Also copy to clipboard
+            navigator.clipboard.writeText(text);
+        }
+
+        function getBounds() {
+            return {
+                west: parseFloat(document.getElementById('west').value),
+                south: parseFloat(document.getElementById('south').value),
+                east: parseFloat(document.getElementById('east').value),
+                north: parseFloat(document.getElementById('north').value)
+            };
+        }
+    </script>
+</body>
+</html>
