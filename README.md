@@ -15,13 +15,49 @@ The HRRR Alaska radar overlay presents unique technical challenges:
 
 - ✅ Images display correctly with proper date-line wrapping
 - ✅ Western and eastern hemisphere images render seamlessly
-- ⚠️ **Boundary polygon may not perfectly trace image edges** ← Primary issue to investigate
+- ⚠️ **Boundary polygon doesn't perfectly trace image edges** ← **ROOT CAUSE IDENTIFIED**
+
+## 🎯 FINDINGS (2025-11-09)
+
+**Status:** ⚠️ Misalignment confirmed and root cause identified
+
+### Measured Alignment Error
+
+Using the live test harness diagnostics:
+
+```
+Southern Edge: 1.76 km error (boundary too far north)
+Northern Edge: 1.81 km error (boundary too far south)
+Average Error: ~1.78 km ≈ HALF of 3km grid cell
+```
+
+### Root Cause
+
+The boundary polygon is calculated from grid cell **CENTERS**, but image pixels extend to grid cell **CORNERS**. This causes a systematic offset of approximately half a grid cell (1.5 km) on all edges.
+
+### Solution
+
+**One-line fix** in backend code:
+
+```python
+# Change this:
+src_transform = from_origin(first_center_x, first_center_y, dx, -dy)
+
+# To this:
+first_corner_x = first_center_x - dx / 2.0
+first_corner_y = first_center_y - dy / 2.0
+src_transform = from_origin(first_corner_x, first_corner_y, dx, -dy)
+```
+
+**Expected result:** Alignment error reduced from 1.8 km to < 0.3 km
+
+📄 **[See detailed analysis](ALIGNMENT_ANALYSIS.md)** | 🔧 **[Run analysis script](fix_boundary_alignment.py)**
 
 ## Live Demo
 
-Once deployed via GitHub Actions, this test harness will be available at:
+This test harness is deployed at:
 ```
-https://<username>.github.io/Alaska_HRRR_Alignment_Leaflet_2/
+https://andrewnakas.github.io/Alaska_HRRR_Alignment_Leaflet_2/
 ```
 
 ## Quick Start
@@ -189,6 +225,8 @@ When alignment is perfect:
 - `images/` - Radar imagery (locally hosted to avoid CORS issues)
   - `alaska_hrrr_western.webp` - Western hemisphere radar image
   - `alaska_hrrr_eastern.webp` - Eastern hemisphere radar image
+- `ALIGNMENT_ANALYSIS.md` - **Detailed analysis of misalignment and solution**
+- `fix_boundary_alignment.py` - Analysis script showing the fix
 - `.github/workflows/deploy.yml` - Auto-deployment to GitHub Pages
 - `README.md` - This file
 
