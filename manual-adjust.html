@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual HRRR Alignment Adjuster</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            max-width: 350px;
+            max-height: 90vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 12px;
+            color: #555;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .range-value {
+            display: inline-block;
+            margin-left: 10px;
+            font-weight: bold;
+            color: #0066cc;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #0052a3;
+        }
+
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button.secondary:hover {
+            background: #5a6268;
+        }
+
+        button.success {
+            background: #28a745;
+        }
+
+        button.success:hover {
+            background: #218838;
+        }
+
+        .bounds-display {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+        }
+
+        .step-size-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .step-size-buttons button {
+            padding: 5px;
+            font-size: 11px;
+        }
+
+        .active-step {
+            background: #28a745 !important;
+        }
+
+        hr {
+            margin: 15px 0;
+            border: none;
+            border-top: 1px solid #ddd;
+        }
+
+        .info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="controls">
+        <h2>🎯 Manual Alignment Adjuster</h2>
+
+        <div class="control-group">
+            <label>Image Opacity: <span class="range-value" id="opacityValue">0.70</span></label>
+            <input type="range" id="opacity" min="0" max="1" step="0.01" value="0.7">
+        </div>
+
+        <div class="control-group">
+            <label>Adjustment Step Size:</label>
+            <div class="step-size-buttons">
+                <button class="step-btn" data-step="0.001">0.001°</button>
+                <button class="step-btn active-step" data-step="0.01">0.01°</button>
+                <button class="step-btn" data-step="0.1">0.1°</button>
+                <button class="step-btn" data-step="1">1°</button>
+                <button class="step-btn" data-step="5">5°</button>
+                <button class="step-btn" data-step="10">10°</button>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="control-group">
+            <label>North (°):</label>
+            <input type="number" id="north" step="0.001" value="81.460175">
+            <div class="step-size-buttons" style="margin-top: 3px;">
+                <button onclick="adjustBound('north', 1)">+</button>
+                <button onclick="adjustBound('north', -1)">-</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>South (°):</label>
+            <input type="number" id="south" step="0.001" value="37.245666">
+            <div class="step-size-buttons" style="margin-top: 3px;">
+                <button onclick="adjustBound('south', 1)">+</button>
+                <button onclick="adjustBound('south', -1)">-</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>West (°):</label>
+            <input type="number" id="west" step="0.001" value="-179.985341">
+            <div class="step-size-buttons" style="margin-top: 3px;">
+                <button onclick="adjustBound('west', 1)">+</button>
+                <button onclick="adjustBound('west', -1)">-</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>East (°):</label>
+            <input type="number" id="east" step="0.001" value="179.989569">
+            <div class="step-size-buttons" style="margin-top: 3px;">
+                <button onclick="adjustBound('east', 1)">+</button>
+                <button onclick="adjustBound('east', -1)">-</button>
+            </div>
+        </div>
+
+        <button onclick="updateMap()">Apply Bounds</button>
+        <button class="secondary" onclick="resetBounds()">Reset to GRIB2 Bounds</button>
+
+        <hr>
+
+        <button class="success" onclick="copyBounds()">📋 Copy Final Bounds</button>
+
+        <div class="bounds-display" id="boundsDisplay"></div>
+
+        <div class="info">
+            <strong>Instructions:</strong><br>
+            1. Use +/- buttons to adjust bounds<br>
+            2. Click "Apply Bounds" to update map<br>
+            3. Align image with boundary polygon<br>
+            4. Copy final bounds when aligned<br>
+            <br>
+            <strong>Keyboard shortcuts:</strong><br>
+            Arrow keys: Pan map<br>
+            +/-: Zoom in/out
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map', {
+            center: [60, -150],
+            zoom: 4,
+            maxBounds: [[-90, -270], [90, 270]],
+            worldCopyJump: false
+        });
+
+        // Add base layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Load test data
+        let testData = null;
+        let imageOverlays = [];
+        let boundaryPolygon = null;
+        let currentStep = 0.01;
+
+        fetch('test-data.json')
+            .then(r => r.json())
+            .then(data => {
+                testData = data;
+                createBoundaryPolygon();
+                updateBoundsDisplay();
+                updateMap();
+            });
+
+        function createBoundaryPolygon() {
+            if (!testData) return;
+
+            const coords = testData.boundary_polygon.map(p => [p.lat, p.lon]);
+
+            boundaryPolygon = L.polygon(coords, {
+                color: 'red',
+                weight: 2,
+                fillOpacity: 0,
+                interactive: false
+            }).addTo(map);
+
+            // Add wrapped copies
+            const wrappedCoords = coords.map(([lat, lon]) => [lat, lon + 360]);
+            L.polygon(wrappedCoords, {
+                color: 'red',
+                weight: 2,
+                fillOpacity: 0,
+                interactive: false
+            }).addTo(map);
+
+            const wrappedCoords2 = coords.map(([lat, lon]) => [lat, lon - 360]);
+            L.polygon(wrappedCoords2, {
+                color: 'red',
+                weight: 2,
+                fillOpacity: 0,
+                interactive: false
+            }).addTo(map);
+        }
+
+        function updateMap() {
+            // Remove existing overlays
+            imageOverlays.forEach(overlay => map.removeLayer(overlay));
+            imageOverlays = [];
+
+            const north = parseFloat(document.getElementById('north').value);
+            const south = parseFloat(document.getElementById('south').value);
+            const west = parseFloat(document.getElementById('west').value);
+            const east = parseFloat(document.getElementById('east').value);
+            const opacity = parseFloat(document.getElementById('opacity').value);
+
+            // Create bounds
+            const bounds = [[south, west], [north, east]];
+
+            // Add western image with wrapping
+            const westernUrl = 'images/alaska_hrrr_western.webp';
+            const easternUrl = 'images/alaska_hrrr_eastern.webp';
+
+            // Western original and +360
+            addImageOverlay(westernUrl, bounds, opacity);
+            addImageOverlay(westernUrl, [[south, west+360], [north, east+360]], opacity);
+
+            // Eastern original and -360
+            addImageOverlay(easternUrl, bounds, opacity);
+            addImageOverlay(easternUrl, [[south, west-360], [north, east-360]], opacity);
+
+            updateBoundsDisplay();
+        }
+
+        function addImageOverlay(url, bounds, opacity) {
+            const overlay = L.imageOverlay(url, bounds, {
+                opacity: opacity,
+                interactive: false
+            }).addTo(map);
+            imageOverlays.push(overlay);
+        }
+
+        function adjustBound(boundName, direction) {
+            const input = document.getElementById(boundName);
+            const currentValue = parseFloat(input.value);
+            const newValue = currentValue + (direction * currentStep);
+            input.value = newValue.toFixed(6);
+        }
+
+        function resetBounds() {
+            document.getElementById('north').value = '81.460175';
+            document.getElementById('south').value = '37.245666';
+            document.getElementById('west').value = '-179.985341';
+            document.getElementById('east').value = '179.989569';
+            updateMap();
+        }
+
+        function updateBoundsDisplay() {
+            const north = parseFloat(document.getElementById('north').value);
+            const south = parseFloat(document.getElementById('south').value);
+            const west = parseFloat(document.getElementById('west').value);
+            const east = parseFloat(document.getElementById('east').value);
+
+            const boundsArray = [west, south, east, north];
+
+            const display = document.getElementById('boundsDisplay');
+            display.innerHTML = `
+                <strong>Current Bounds:</strong><br>
+                [${boundsArray.join(', ')}]<br><br>
+                <strong>JSON format:</strong><br>
+                "bounds": [${west}, ${south}, ${east}, ${north}]
+            `;
+        }
+
+        function copyBounds() {
+            const north = parseFloat(document.getElementById('north').value);
+            const south = parseFloat(document.getElementById('south').value);
+            const west = parseFloat(document.getElementById('west').value);
+            const east = parseFloat(document.getElementById('east').value);
+
+            const boundsObj = {
+                western: {
+                    bounds: [west, south, east, north]
+                },
+                eastern: {
+                    bounds: [west, south, east, north]
+                }
+            };
+
+            const text = JSON.stringify(boundsObj, null, 2);
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Bounds copied to clipboard!\n\nPaste in chat and I\'ll update the code.');
+            });
+        }
+
+        // Opacity slider
+        document.getElementById('opacity').addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('opacityValue').textContent = value.toFixed(2);
+            imageOverlays.forEach(overlay => overlay.setOpacity(value));
+        });
+
+        // Step size buttons
+        document.querySelectorAll('.step-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentStep = parseFloat(btn.dataset.step);
+                document.querySelectorAll('.step-btn').forEach(b => b.classList.remove('active-step'));
+                btn.classList.add('active-step');
+            });
+        });
+
+        // Input change listeners
+        ['north', 'south', 'east', 'west'].forEach(id => {
+            document.getElementById(id).addEventListener('change', updateBoundsDisplay);
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    adjustBound('north', 1);
+                    adjustBound('south', 1);
+                    updateMap();
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    adjustBound('north', -1);
+                    adjustBound('south', -1);
+                    updateMap();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    adjustBound('west', -1);
+                    adjustBound('east', -1);
+                    updateMap();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    adjustBound('west', 1);
+                    adjustBound('east', 1);
+                    updateMap();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
