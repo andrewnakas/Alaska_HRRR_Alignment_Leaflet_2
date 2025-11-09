@@ -19,39 +19,52 @@ The HRRR Alaska radar overlay presents unique technical challenges:
 
 ## 🎯 FINDINGS (2025-11-09)
 
-**Status:** ⚠️ Misalignment confirmed and root cause identified
+**Status:** 🔴 CRITICAL ISSUE IDENTIFIED - Image padding causes massive misalignment
 
-### Measured Alignment Error
+### Initial Measurement
 
-Using the live test harness diagnostics:
+Using the live test harness diagnostics with original bounds:
 
 ```
-Southern Edge: 1.76 km error (boundary too far north)
-Northern Edge: 1.81 km error (boundary too far south)
+Southern Edge: 1.76 km error
+Northern Edge: 1.81 km error
 Average Error: ~1.78 km ≈ HALF of 3km grid cell
 ```
 
-### Root Cause
+### Deep Analysis - ACTUAL Root Cause
 
-The boundary polygon is calculated from grid cell **CENTERS**, but image pixels extend to grid cell **CORNERS**. This causes a systematic offset of approximately half a grid cell (1.5 km) on all edges.
+Image analysis revealed the **real problem**: The reprojected images contain **massive transparent padding** not accounted for in bounds.
 
-### Solution
+```
+Image padding found:
+  Top:    129 pixels (10.8% of image) = 423 km of empty space!
+  Bottom:  23 pixels ( 1.9% of image) =  75 km of empty space!
 
-**One-line fix** in backend code:
+Geographic impact:
+  North boundary: OFF by -3.82° (-423 km) 🔴 CRITICAL
+  South boundary: OFF by +0.68° (+75 km)  ⚠️
 
-```python
-# Change this:
-src_transform = from_origin(first_center_x, first_center_y, dx, -dy)
-
-# To this:
-first_corner_x = first_center_x - dx / 2.0
-first_corner_y = first_center_y - dy / 2.0
-src_transform = from_origin(first_corner_x, first_corner_y, dx, -dy)
+Actual radar data: rows 129-1176 of 1200 total
+Data coverage: Only 87.3% of image contains radar data
 ```
 
-**Expected result:** Alignment error reduced from 1.8 km to < 0.3 km
+### Solution Applied
 
-📄 **[See detailed analysis](ALIGNMENT_ANALYSIS.md)** | 🔧 **[Run analysis script](fix_boundary_alignment.py)**
+**Corrected image bounds** based on actual pixel data (excluding transparent padding):
+
+```
+OLD (includes padding):
+  Western: [-180.004, 41.605, 180.008, 77.101]
+  Eastern: [-179.985, 41.605, 179.994, 77.101]
+
+NEW (actual radar data):
+  Western: [-180.004, 42.285, 180.008, 73.285]
+  Eastern: [-179.985, 42.285, 179.994, 73.285]
+```
+
+**Status:** ✅ Bounds corrected in test-data.json - reload test harness to verify
+
+📄 **[Image padding analysis](IMAGE_PADDING_ANALYSIS.md)** | 🔧 **[Run analysis](analyze_image_bounds.py)** | 📊 **[Grid center issue](ALIGNMENT_ANALYSIS.md)**
 
 ## Live Demo
 
@@ -221,12 +234,16 @@ When alignment is perfect:
 ## Files
 
 - `index.html` - Interactive test harness with Leaflet map
-- `test-data.json` - Sample HRRR Alaska data from production API
+- `test-data.json` - HRRR Alaska data with **corrected bounds** (excluding image padding)
 - `images/` - Radar imagery (locally hosted to avoid CORS issues)
-  - `alaska_hrrr_western.webp` - Western hemisphere radar image
-  - `alaska_hrrr_eastern.webp` - Eastern hemisphere radar image
-- `ALIGNMENT_ANALYSIS.md` - **Detailed analysis of misalignment and solution**
-- `fix_boundary_alignment.py` - Analysis script showing the fix
+  - `alaska_hrrr_western.webp` - Western hemisphere radar image (12170×1200, 87.3% data)
+  - `alaska_hrrr_eastern.webp` - Eastern hemisphere radar image (12169×1200, 87.3% data)
+- **`IMAGE_PADDING_ANALYSIS.md`** - ⭐ Primary issue: Image padding analysis and solution
+- `analyze_image_bounds.py` - Tool to analyze actual radar data extent in images
+- `apply_corrected_bounds.py` - Script to apply padding corrections
+- `image_analysis_results.json` - Detailed pixel-level padding measurements
+- `ALIGNMENT_ANALYSIS.md` - Secondary issue: Grid center vs corner analysis
+- `fix_boundary_alignment.py` - Grid center/corner fix demonstration
 - `.github/workflows/deploy.yml` - Auto-deployment to GitHub Pages
 - `README.md` - This file
 
