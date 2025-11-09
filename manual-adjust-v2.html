@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRRR Manual Adjuster - Position & Rotate</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 12px;
+            color: #555;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        input[type="range"] {
+            width: calc(100% - 60px);
+        }
+
+        .range-value {
+            display: inline-block;
+            width: 50px;
+            text-align: right;
+            font-weight: bold;
+            color: #0066cc;
+            font-size: 12px;
+        }
+
+        button {
+            padding: 10px;
+            margin-top: 5px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #0052a3;
+        }
+
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button.secondary:hover {
+            background: #5a6268;
+        }
+
+        button.success {
+            background: #28a745;
+        }
+
+        button.success:hover {
+            background: #218838;
+        }
+
+        .full-width {
+            width: 100%;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+
+        .bounds-display {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 10px;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        hr {
+            margin: 15px 0;
+            border: none;
+            border-top: 1px solid #ddd;
+        }
+
+        .info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        .coord-grid {
+            display: grid;
+            grid-template-columns: 70px 1fr;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .coord-label {
+            font-size: 11px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="controls">
+        <h2>🎯 Position & Rotate Adjuster</h2>
+
+        <div class="control-group">
+            <label>Opacity: <span class="range-value" id="opacityValue">0.70</span></label>
+            <input type="range" id="opacity" min="0" max="1" step="0.01" value="0.7">
+        </div>
+
+        <hr>
+
+        <h3 style="font-size: 14px; margin-bottom: 10px;">📍 Position (Shift)</h3>
+
+        <div class="control-group">
+            <label>Shift North/South (°): <span class="range-value" id="shiftLatValue">0.000</span></label>
+            <input type="range" id="shiftLat" min="-10" max="10" step="0.001" value="0">
+        </div>
+
+        <div class="control-group">
+            <label>Shift East/West (°): <span class="range-value" id="shiftLonValue">0.000</span></label>
+            <input type="range" id="shiftLon" min="-10" max="10" step="0.001" value="0">
+        </div>
+
+        <hr>
+
+        <h3 style="font-size: 14px; margin-bottom: 10px;">🔄 Rotation & Scale</h3>
+
+        <div class="control-group">
+            <label>Rotation (°): <span class="range-value" id="rotationValue">0.0</span></label>
+            <input type="range" id="rotation" min="-45" max="45" step="0.1" value="0">
+        </div>
+
+        <div class="control-group">
+            <label>Scale Latitude: <span class="range-value" id="scaleLatValue">1.000</span></label>
+            <input type="range" id="scaleLat" min="0.5" max="1.5" step="0.001" value="1">
+        </div>
+
+        <div class="control-group">
+            <label>Scale Longitude: <span class="range-value" id="scaleLonValue">1.000</span></label>
+            <input type="range" id="scaleLon" min="0.5" max="1.5" step="0.001" value="1">
+        </div>
+
+        <hr>
+
+        <h3 style="font-size: 14px; margin-bottom: 10px;">📏 Fine-Tune Corners</h3>
+
+        <div class="control-group">
+            <div class="coord-grid">
+                <span class="coord-label">North:</span>
+                <input type="number" id="north" step="0.001" value="81.460175">
+                <span class="coord-label">South:</span>
+                <input type="number" id="south" step="0.001" value="37.245666">
+                <span class="coord-label">West:</span>
+                <input type="number" id="west" step="0.001" value="-179.985341">
+                <span class="coord-label">East:</span>
+                <input type="number" id="east" step="0.001" value="179.989569">
+            </div>
+        </div>
+
+        <hr>
+
+        <button class="full-width secondary" onclick="resetAll()">Reset to GRIB2 Defaults</button>
+        <button class="full-width success" onclick="copyBounds()">📋 Copy Final Bounds</button>
+
+        <div class="bounds-display" id="boundsDisplay"></div>
+
+        <div class="info">
+            <strong>Instructions:</strong><br>
+            1. Use sliders to shift/rotate/scale<br>
+            2. Align image with red boundary<br>
+            3. Fine-tune corners if needed<br>
+            4. Click "Copy Final Bounds"<br>
+            5. Paste in chat
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-distortableimage@1.2.0/dist/leaflet.distortableimage.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map', {
+            center: [60, -150],
+            zoom: 4,
+            maxBounds: [[-90, -270], [90, 270]],
+            worldCopyJump: false
+        });
+
+        // Add base layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Base bounds from GRIB2
+        const baseBounds = {
+            north: 81.460175,
+            south: 37.245666,
+            west: -179.985341,
+            east: 179.989569
+        };
+
+        let testData = null;
+        let imageOverlays = [];
+
+        fetch('test-data.json')
+            .then(r => r.json())
+            .then(data => {
+                testData = data;
+                createBoundaryPolygon();
+                updateMap();
+            });
+
+        function createBoundaryPolygon() {
+            if (!testData) return;
+
+            const coords = testData.boundary_polygon.map(p => [p.lat, p.lon]);
+
+            // Main boundary
+            L.polygon(coords, {
+                color: 'red',
+                weight: 2,
+                fillOpacity: 0,
+                interactive: false
+            }).addTo(map);
+
+            // Wrapped copies for date line
+            L.polygon(coords.map(([lat, lon]) => [lat, lon + 360]), {
+                color: 'red',
+                weight: 2,
+                fillOpacity: 0,
+                interactive: false
+            }).addTo(map);
+
+            L.polygon(coords.map(([lat, lon]) => [lat, lon - 360]), {
+                color: 'red',
+                weight: 2,
+                fillOpacity: 0,
+                interactive: false
+            }).addTo(map);
+        }
+
+        function calculateBounds() {
+            // Get base values
+            let north = baseBounds.north;
+            let south = baseBounds.south;
+            let west = baseBounds.west;
+            let east = baseBounds.east;
+
+            // Apply shifts
+            const shiftLat = parseFloat(document.getElementById('shiftLat').value);
+            const shiftLon = parseFloat(document.getElementById('shiftLon').value);
+
+            north += shiftLat;
+            south += shiftLat;
+            west += shiftLon;
+            east += shiftLon;
+
+            // Apply scaling
+            const scaleLat = parseFloat(document.getElementById('scaleLat').value);
+            const scaleLon = parseFloat(document.getElementById('scaleLon').value);
+
+            const centerLat = (north + south) / 2;
+            const centerLon = (west + east) / 2;
+
+            const latRange = (north - south) * scaleLat / 2;
+            const lonRange = (east - west) * scaleLon / 2;
+
+            north = centerLat + latRange;
+            south = centerLat - latRange;
+            east = centerLon + lonRange;
+            west = centerLon - lonRange;
+
+            // Update manual inputs
+            document.getElementById('north').value = north.toFixed(6);
+            document.getElementById('south').value = south.toFixed(6);
+            document.getElementById('west').value = west.toFixed(6);
+            document.getElementById('east').value = east.toFixed(6);
+
+            return { north, south, west, east };
+        }
+
+        function updateMap() {
+            // Remove existing overlays
+            imageOverlays.forEach(overlay => map.removeLayer(overlay));
+            imageOverlays = [];
+
+            // Get calculated or manual bounds
+            const north = parseFloat(document.getElementById('north').value);
+            const south = parseFloat(document.getElementById('south').value);
+            const west = parseFloat(document.getElementById('west').value);
+            const east = parseFloat(document.getElementById('east').value);
+            const opacity = parseFloat(document.getElementById('opacity').value);
+
+            const bounds = [[south, west], [north, east]];
+
+            // Add images with wrapping
+            addImageOverlay('images/alaska_hrrr_western.webp', bounds, opacity);
+            addImageOverlay('images/alaska_hrrr_western.webp', [[south, west+360], [north, east+360]], opacity);
+            addImageOverlay('images/alaska_hrrr_eastern.webp', bounds, opacity);
+            addImageOverlay('images/alaska_hrrr_eastern.webp', [[south, west-360], [north, east-360]], opacity);
+
+            updateBoundsDisplay();
+        }
+
+        function addImageOverlay(url, bounds, opacity) {
+            const overlay = L.imageOverlay(url, bounds, {
+                opacity: opacity,
+                interactive: false
+            }).addTo(map);
+            imageOverlays.push(overlay);
+        }
+
+        function updateBoundsDisplay() {
+            const north = parseFloat(document.getElementById('north').value);
+            const south = parseFloat(document.getElementById('south').value);
+            const west = parseFloat(document.getElementById('west').value);
+            const east = parseFloat(document.getElementById('east').value);
+
+            const display = document.getElementById('boundsDisplay');
+            display.innerHTML = `
+                <strong>Final Bounds:</strong><br>
+                [${west}, ${south}, ${east}, ${north}]<br><br>
+                <strong>JSON:</strong><br>
+                "bounds": [${west}, ${south}, ${east}, ${north}]
+            `;
+        }
+
+        function resetAll() {
+            document.getElementById('shiftLat').value = 0;
+            document.getElementById('shiftLon').value = 0;
+            document.getElementById('rotation').value = 0;
+            document.getElementById('scaleLat').value = 1;
+            document.getElementById('scaleLon').value = 1;
+
+            document.getElementById('north').value = baseBounds.north;
+            document.getElementById('south').value = baseBounds.south;
+            document.getElementById('west').value = baseBounds.west;
+            document.getElementById('east').value = baseBounds.east;
+
+            updateSliderValues();
+            updateMap();
+        }
+
+        function copyBounds() {
+            const north = parseFloat(document.getElementById('north').value);
+            const south = parseFloat(document.getElementById('south').value);
+            const west = parseFloat(document.getElementById('west').value);
+            const east = parseFloat(document.getElementById('east').value);
+
+            const boundsObj = {
+                western: {
+                    bounds: [west, south, east, north]
+                },
+                eastern: {
+                    bounds: [west, south, east, north]
+                }
+            };
+
+            const text = JSON.stringify(boundsObj, null, 2);
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Bounds copied!\n\nPaste in chat and I\'ll hardcode them into the app.');
+            });
+        }
+
+        function updateSliderValues() {
+            document.getElementById('opacityValue').textContent = parseFloat(document.getElementById('opacity').value).toFixed(2);
+            document.getElementById('shiftLatValue').textContent = parseFloat(document.getElementById('shiftLat').value).toFixed(3);
+            document.getElementById('shiftLonValue').textContent = parseFloat(document.getElementById('shiftLon').value).toFixed(3);
+            document.getElementById('rotationValue').textContent = parseFloat(document.getElementById('rotation').value).toFixed(1);
+            document.getElementById('scaleLatValue').textContent = parseFloat(document.getElementById('scaleLat').value).toFixed(3);
+            document.getElementById('scaleLonValue').textContent = parseFloat(document.getElementById('scaleLon').value).toFixed(3);
+        }
+
+        // Event listeners
+        document.getElementById('opacity').addEventListener('input', (e) => {
+            updateSliderValues();
+            imageOverlays.forEach(overlay => overlay.setOpacity(parseFloat(e.target.value)));
+        });
+
+        ['shiftLat', 'shiftLon', 'scaleLat', 'scaleLon', 'rotation'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                updateSliderValues();
+                calculateBounds();
+                updateMap();
+            });
+        });
+
+        ['north', 'south', 'east', 'west'].forEach(id => {
+            document.getElementById(id).addEventListener('change', updateMap);
+        });
+
+        // Initialize
+        updateSliderValues();
+    </script>
+</body>
+</html>
