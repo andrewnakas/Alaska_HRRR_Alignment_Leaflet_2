@@ -1,0 +1,28 @@
+{
+  "western": {
+    "alpha_distribution": {
+      "0": 13934480,
+      "180": 561484,
+      "255": 108036
+    },
+    "dimensions": {
+      "width": 12170,
+      "height": 1200
+    },
+    "total_pixels": 14604000,
+    "visible_pixels": 669520
+  },
+  "eastern": {
+    "alpha_distribution": {
+      "0": 13933490,
+      "180": 561410,
+      "255": 107900
+    },
+    "dimensions": {
+      "width": 12169,
+      "height": 1200
+    },
+    "total_pixels": 14602800,
+    "visible_pixels": 669310
+  }
+}
