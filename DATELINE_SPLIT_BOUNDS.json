@@ -1,0 +1,20 @@
+{
+  "western": {
+    "bounds": [
+      -180.0,
+      37.338629026717555,
+      -115.77573699999999,
+      80.61197697328244
+    ],
+    "description": "Western hemisphere (Alaska mainland): -180\u00b0 to -115.8\u00b0W"
+  },
+  "eastern": {
+    "bounds": [
+      156.436843,
+      37.338629026717555,
+      180.0,
+      80.61197697328244
+    ],
+    "description": "Eastern hemisphere (Aleutians): 156.4\u00b0E to 180\u00b0E"
+  }
+}
