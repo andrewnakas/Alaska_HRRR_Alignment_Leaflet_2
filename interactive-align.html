@@ -211,6 +211,13 @@
         </div>
 
         <div class="control-group">
+            <h3>Current Bounds (Live)</h3>
+            <div id="liveBounds" style="font-family: 'Courier New', monospace; font-size: 11px; color: #495057; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                Loading...
+            </div>
+        </div>
+
+        <div class="control-group">
             <h3>Export Settings</h3>
             <button class="btn-success" onclick="copyBounds()">📋 Copy Final Bounds</button>
             <button class="btn-success" onclick="exportJSON()">💾 Export as JSON</button>
@@ -315,11 +322,24 @@
             const finalBounds = calculateFinalBounds();
             const opacity = parseInt(document.getElementById('opacity').value) / 100;
 
-            // Add image if enabled (single image with 4-way wrapping)
-            if (document.getElementById('showImage').checked) {
-                const imageUrl = 'images/alaska_hrrr_western.webp';
+            // Update live bounds display
+            document.getElementById('liveBounds').innerHTML =
+                `West: ${finalBounds.west.toFixed(6)}°<br>` +
+                `South: ${finalBounds.south.toFixed(6)}°<br>` +
+                `East: ${finalBounds.east.toFixed(6)}°<br>` +
+                `North: ${finalBounds.north.toFixed(6)}°<br>` +
+                `<small style="color: #6c757d;">Width: ${(finalBounds.east - finalBounds.west).toFixed(3)}°</small>`;
 
-                // 4-way wrapping - same bounds applied to all wraps
+            // Add images if enabled (both western and eastern with 4-way wrapping)
+            if (document.getElementById('showImage').checked) {
+                // IMPORTANT: Both images use THE EXACT SAME bounds
+                // They are different image files but represent same geographic area
+                const images = [
+                    'images/alaska_hrrr_western.webp',
+                    'images/alaska_hrrr_eastern.webp'
+                ];
+
+                // 4-way wrapping - SAME bounds for all images and all wraps
                 const wraps = [
                     [[finalBounds.south, finalBounds.west], [finalBounds.north, finalBounds.east]],
                     [[finalBounds.south, finalBounds.west + 360], [finalBounds.north, finalBounds.east + 360]],
@@ -327,13 +347,16 @@
                     [[finalBounds.south, finalBounds.west + 720], [finalBounds.north, finalBounds.east + 720]]
                 ];
 
-                // Add image with all 4 wraps (moves as one unit)
-                wraps.forEach(bounds => {
-                    const overlay = L.imageOverlay(imageUrl, bounds, {
-                        opacity: opacity,
-                        interactive: false
-                    }).addTo(map);
-                    imageOverlays.push(overlay);
+                // Add both images with all wraps - all using IDENTICAL bounds
+                // This ensures they all move together as one unit
+                images.forEach(imageUrl => {
+                    wraps.forEach(bounds => {
+                        const overlay = L.imageOverlay(imageUrl, bounds, {
+                            opacity: opacity,
+                            interactive: false
+                        }).addTo(map);
+                        imageOverlays.push(overlay);
+                    });
                 });
             }
 
