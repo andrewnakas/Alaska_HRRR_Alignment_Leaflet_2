@@ -123,7 +123,7 @@
 
         <div class="control-group">
             <h3>Layer Visibility</h3>
-            <label><input type="checkbox" id="showImage" checked> Show HRRR Images</label><br>
+            <label><input type="checkbox" id="showImage" checked> Show HRRR Image</label><br>
             <label><input type="checkbox" id="showBoundary" checked> Show Boundary Polygon</label><br>
             <label style="margin-top: 10px;">Opacity: <span id="opacityValue">70%</span></label>
             <input type="range" id="opacity" min="0" max="100" value="70">
@@ -219,10 +219,10 @@
 
         <div class="info">
             <strong>Tips:</strong><br>
-            • Use Position sliders to move images without changing size<br>
-            • Use Scale sliders to resize images<br>
+            • Use Position sliders to move image without changing size<br>
+            • Use Scale sliders to resize image<br>
             • Use Base Bounds to set starting dimensions<br>
-            • Both images move together as one unit<br>
+            • Image wraps seamlessly across the dateline<br>
             • Export final bounds when perfectly aligned
         </div>
     </div>
@@ -315,14 +315,11 @@
             const finalBounds = calculateFinalBounds();
             const opacity = parseInt(document.getElementById('opacity').value) / 100;
 
-            // Add images if enabled (both western and eastern move together)
+            // Add image if enabled (single image with 4-way wrapping)
             if (document.getElementById('showImage').checked) {
-                const images = [
-                    'images/alaska_hrrr_western.webp',
-                    'images/alaska_hrrr_eastern.webp'
-                ];
+                const imageUrl = 'images/alaska_hrrr_western.webp';
 
-                // 4-way wrapping
+                // 4-way wrapping - same bounds applied to all wraps
                 const wraps = [
                     [[finalBounds.south, finalBounds.west], [finalBounds.north, finalBounds.east]],
                     [[finalBounds.south, finalBounds.west + 360], [finalBounds.north, finalBounds.east + 360]],
@@ -330,15 +327,13 @@
                     [[finalBounds.south, finalBounds.west + 720], [finalBounds.north, finalBounds.east + 720]]
                 ];
 
-                // Add both images with same bounds (they move as one)
-                images.forEach(imageUrl => {
-                    wraps.forEach(bounds => {
-                        const overlay = L.imageOverlay(imageUrl, bounds, {
-                            opacity: opacity,
-                            interactive: false
-                        }).addTo(map);
-                        imageOverlays.push(overlay);
-                    });
+                // Add image with all 4 wraps (moves as one unit)
+                wraps.forEach(bounds => {
+                    const overlay = L.imageOverlay(imageUrl, bounds, {
+                        opacity: opacity,
+                        interactive: false
+                    }).addTo(map);
+                    imageOverlays.push(overlay);
                 });
             }
 
