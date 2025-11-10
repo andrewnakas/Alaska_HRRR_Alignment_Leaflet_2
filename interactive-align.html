@@ -134,13 +134,13 @@
 
             <div class="slider-container">
                 <label>Horizontal Offset (East/West)</label>
-                <input type="range" id="offsetX" min="-50" max="50" step="0.001" value="0">
+                <input type="range" id="offsetX" min="-180" max="180" step="0.001" value="0">
                 <div class="value-display"><span id="offsetXValue">0.000</span>° (<span id="offsetXKm">0</span> km)</div>
             </div>
 
             <div class="slider-container">
                 <label>Vertical Offset (North/South)</label>
-                <input type="range" id="offsetY" min="-50" max="50" step="0.001" value="0">
+                <input type="range" id="offsetY" min="-90" max="90" step="0.001" value="0">
                 <div class="value-display"><span id="offsetYValue">0.000</span>° (<span id="offsetYKm">0</span> km)</div>
             </div>
 
@@ -159,13 +159,13 @@
 
             <div class="slider-container">
                 <label>Horizontal Scale</label>
-                <input type="range" id="scaleX" min="0.5" max="1.5" step="0.001" value="1.000">
+                <input type="range" id="scaleX" min="0.1" max="3.0" step="0.001" value="1.000">
                 <div class="value-display"><span id="scaleXValue">1.000</span>x</div>
             </div>
 
             <div class="slider-container">
                 <label>Vertical Scale</label>
-                <input type="range" id="scaleY" min="0.5" max="1.5" step="0.001" value="1.000">
+                <input type="range" id="scaleY" min="0.1" max="3.0" step="0.001" value="1.000">
                 <div class="value-display"><span id="scaleYValue">1.000</span>x</div>
             </div>
 
@@ -180,25 +180,25 @@
 
             <div class="slider-container">
                 <label>West (Left Edge)</label>
-                <input type="range" id="west" min="-250" max="-100" step="0.01" value="-179.985341">
+                <input type="range" id="west" min="-360" max="0" step="0.01" value="-179.985341">
                 <div class="value-display"><span id="westValue">-179.985341</span>°</div>
             </div>
 
             <div class="slider-container">
                 <label>South (Bottom Edge)</label>
-                <input type="range" id="south" min="0" max="60" step="0.01" value="40.834286">
+                <input type="range" id="south" min="-90" max="90" step="0.01" value="40.834286">
                 <div class="value-display"><span id="southValue">40.834286</span>°</div>
             </div>
 
             <div class="slider-container">
                 <label>East (Right Edge)</label>
-                <input type="range" id="east" min="100" max="250" step="0.01" value="180.014659">
+                <input type="range" id="east" min="0" max="360" step="0.01" value="180.014659">
                 <div class="value-display"><span id="eastValue">180.014659</span>°</div>
             </div>
 
             <div class="slider-container">
                 <label>North (Top Edge)</label>
-                <input type="range" id="north" min="40" max="90" step="0.01" value="81.460175">
+                <input type="range" id="north" min="-90" max="90" step="0.01" value="81.460175">
                 <div class="value-display"><span id="northValue">81.460175</span>°</div>
             </div>
         </div>
@@ -330,14 +330,9 @@
                 `North: ${finalBounds.north.toFixed(6)}°<br>` +
                 `<small style="color: #6c757d;">Width: ${(finalBounds.east - finalBounds.west).toFixed(3)}°</small>`;
 
-            // Add BOTH images (western + eastern) with 4-way wrapping
-            // CRITICAL: Both images use IDENTICAL bounds and move as ONE unit
+            // Add single image with 4-way wrapping
             if (document.getElementById('showImage').checked) {
-                // Both western and eastern images - they overlay with same bounds
-                const images = [
-                    'images/alaska_hrrr_western.webp',
-                    'images/alaska_hrrr_eastern.webp'
-                ];
+                const imageUrl = 'images/alaska_hrrr_western.webp';
 
                 // Calculate width once to ensure all wraps have IDENTICAL dimensions
                 const width = finalBounds.east - finalBounds.west;
@@ -346,19 +341,17 @@
                 // 4-way wrapping offsets
                 const wrapOffsets = [0, 360, -360, 720];
 
-                // Add BOTH images for each wrap - all use EXACT SAME bounds
-                images.forEach(imageUrl => {
-                    wrapOffsets.forEach(offset => {
-                        const west = finalBounds.west + offset;
-                        const east = west + width;  // Use calculated width for consistency
-                        const bounds = [[finalBounds.south, west], [finalBounds.north, east]];
+                // Add image with all wraps - all use EXACT SAME dimensions
+                wrapOffsets.forEach(offset => {
+                    const west = finalBounds.west + offset;
+                    const east = west + width;  // Use calculated width for consistency
+                    const bounds = [[finalBounds.south, west], [finalBounds.north, east]];
 
-                        const overlay = L.imageOverlay(imageUrl, bounds, {
-                            opacity: opacity,
-                            interactive: false
-                        }).addTo(map);
-                        imageOverlays.push(overlay);
-                    });
+                    const overlay = L.imageOverlay(imageUrl, bounds, {
+                        opacity: opacity,
+                        interactive: false
+                    }).addTo(map);
+                    imageOverlays.push(overlay);
                 });
             }
 
@@ -425,7 +418,7 @@
             if (type === 'both') {
                 ['scaleX', 'scaleY'].forEach(id => {
                     const slider = document.getElementById(id);
-                    const newValue = Math.max(0.5, Math.min(1.5, parseFloat(slider.value) + delta));
+                    const newValue = Math.max(0.1, Math.min(3.0, parseFloat(slider.value) + delta));
                     slider.value = newValue;
                     updateDisplay(id);
                 });
