@@ -145,12 +145,21 @@
             </div>
 
             <div style="margin-top: 10px;">
-                <button class="btn-secondary" onclick="adjustOffset('Y', 0.01)">▲ North</button>
+                <label style="font-size: 11px; color: #6c757d;">Fine Adjust Step: </label>
+                <select id="fineAdjustStep" style="font-size: 11px; padding: 3px;">
+                    <option value="0.0001">0.0001° (~11m)</option>
+                    <option value="0.001">0.001° (~110m)</option>
+                    <option value="0.01" selected>0.01° (~1.1km)</option>
+                    <option value="0.1">0.1° (~11km)</option>
+                </select>
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="btn-secondary" onclick="adjustOffset('Y', getFineStep())">▲ North</button>
                 <div class="grid-2col" style="margin: 5px 0;">
-                    <button class="btn-secondary" onclick="adjustOffset('X', -0.01)">◀ West</button>
-                    <button class="btn-secondary" onclick="adjustOffset('X', 0.01)">East ▶</button>
+                    <button class="btn-secondary" onclick="adjustOffset('X', -getFineStep())">◀ West</button>
+                    <button class="btn-secondary" onclick="adjustOffset('X', getFineStep())">East ▶</button>
                 </div>
-                <button class="btn-secondary" onclick="adjustOffset('Y', -0.01)">▼ South</button>
+                <button class="btn-secondary" onclick="adjustOffset('Y', -getFineStep())">▼ South</button>
             </div>
         </div>
 
@@ -180,25 +189,25 @@
 
             <div class="slider-container">
                 <label>West (Left Edge)</label>
-                <input type="range" id="west" min="-360" max="0" step="0.01" value="-180.615000">
+                <input type="range" id="west" min="-360" max="0" step="0.001" value="-180.615000">
                 <div class="value-display"><span id="westValue">-180.615000</span>°</div>
             </div>
 
             <div class="slider-container">
                 <label>South (Bottom Edge)</label>
-                <input type="range" id="south" min="-90" max="90" step="0.01" value="37.376590">
+                <input type="range" id="south" min="-90" max="90" step="0.001" value="37.376590">
                 <div class="value-display"><span id="southValue">37.376590</span>°</div>
             </div>
 
             <div class="slider-container">
                 <label>East (Right Edge)</label>
-                <input type="range" id="east" min="0" max="360" step="0.01" value="179.385000">
+                <input type="range" id="east" min="0" max="360" step="0.001" value="179.385000">
                 <div class="value-display"><span id="eastValue">179.385000</span>°</div>
             </div>
 
             <div class="slider-container">
                 <label>North (Top Edge)</label>
-                <input type="range" id="north" min="-90" max="90" step="0.01" value="74.189410">
+                <input type="range" id="north" min="-90" max="90" step="0.001" value="74.189410">
                 <div class="value-display"><span id="northValue">74.189410</span>°</div>
             </div>
         </div>
@@ -224,11 +233,24 @@
             <div id="output"></div>
         </div>
 
+        <div class="control-group" style="background: #fff3cd; border: 1px solid #ffc107;">
+            <h3 style="color: #856404;">⚠️ Projection Mismatch</h3>
+            <div style="font-size: 11px; color: #856404; line-height: 1.5;">
+                <strong>Root Cause Identified:</strong><br>
+                Images are EPSG:4326 (WGS84) but Leaflet displays in EPSG:3857 (Web Mercator).<br>
+                <br>
+                <strong>Impact:</strong> At 60-74° latitude, Web Mercator has 2x distortion, causing misalignment.<br>
+                <br>
+                <strong>Solution:</strong> Backend should generate EPSG:3857 images instead. For now, use micro-adjustments.
+            </div>
+        </div>
+
         <div class="info">
             <strong>Tips:</strong><br>
             • Use Position sliders to move image without changing size<br>
-            • Use Scale sliders to resize image<br>
-            • Use Base Bounds to set starting dimensions<br>
+            • Use Scale sliders to compensate for projection distortion<br>
+            • Use Base Bounds sliders (0.001° steps = ~110m precision)<br>
+            • Arrow buttons: Select step size from 11m to 11km<br>
             • Image wraps seamlessly across the dateline<br>
             • Export final bounds when perfectly aligned
         </div>
@@ -404,6 +426,10 @@
 
         document.getElementById('showImage').addEventListener('change', updateMap);
         document.getElementById('showBoundary').addEventListener('change', updateMap);
+
+        function getFineStep() {
+            return parseFloat(document.getElementById('fineAdjustStep').value);
+        }
 
         function adjustOffset(axis, delta) {
             const id = 'offset' + axis;
