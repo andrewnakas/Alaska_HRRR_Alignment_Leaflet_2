@@ -109,12 +109,10 @@
             margin-top: 10px;
             line-height: 1.4;
         }
-        input[type="number"] {
-            width: 80px;
-            padding: 5px;
-            border: 1px solid #ced4da;
-            border-radius: 3px;
-            font-size: 12px;
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
         }
     </style>
 </head>
@@ -125,14 +123,60 @@
 
         <div class="control-group">
             <h3>Layer Visibility</h3>
-            <label><input type="checkbox" id="showImage" checked> Show HRRR Image</label><br>
+            <label><input type="checkbox" id="showImage" checked> Show HRRR Images</label><br>
             <label><input type="checkbox" id="showBoundary" checked> Show Boundary Polygon</label><br>
             <label style="margin-top: 10px;">Opacity: <span id="opacityValue">70%</span></label>
             <input type="range" id="opacity" min="0" max="100" value="70">
         </div>
 
         <div class="control-group">
-            <h3>Bounds Adjustment</h3>
+            <h3>Position (Translation)</h3>
+
+            <div class="slider-container">
+                <label>Horizontal Offset (East/West)</label>
+                <input type="range" id="offsetX" min="-10" max="10" step="0.001" value="0">
+                <div class="value-display"><span id="offsetXValue">0.000</span>° (<span id="offsetXKm">0</span> km)</div>
+            </div>
+
+            <div class="slider-container">
+                <label>Vertical Offset (North/South)</label>
+                <input type="range" id="offsetY" min="-10" max="10" step="0.001" value="0">
+                <div class="value-display"><span id="offsetYValue">0.000</span>° (<span id="offsetYKm">0</span> km)</div>
+            </div>
+
+            <div style="margin-top: 10px;">
+                <button class="btn-secondary" onclick="adjustOffset('Y', 0.01)">▲ North</button>
+                <div class="grid-2col" style="margin: 5px 0;">
+                    <button class="btn-secondary" onclick="adjustOffset('X', -0.01)">◀ West</button>
+                    <button class="btn-secondary" onclick="adjustOffset('X', 0.01)">East ▶</button>
+                </div>
+                <button class="btn-secondary" onclick="adjustOffset('Y', -0.01)">▼ South</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Scale (Size)</h3>
+
+            <div class="slider-container">
+                <label>Horizontal Scale</label>
+                <input type="range" id="scaleX" min="0.5" max="1.5" step="0.001" value="1.000">
+                <div class="value-display"><span id="scaleXValue">1.000</span>x</div>
+            </div>
+
+            <div class="slider-container">
+                <label>Vertical Scale</label>
+                <input type="range" id="scaleY" min="0.5" max="1.5" step="0.001" value="1.000">
+                <div class="value-display"><span id="scaleYValue">1.000</span>x</div>
+            </div>
+
+            <div class="grid-2col" style="margin-top: 10px;">
+                <button class="btn-secondary" onclick="adjustScale('both', 0.001)">+ Bigger</button>
+                <button class="btn-secondary" onclick="adjustScale('both', -0.001)">- Smaller</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Base Bounds (Reference)</h3>
 
             <div class="slider-container">
                 <label>West (Left Edge)</label>
@@ -160,45 +204,26 @@
         </div>
 
         <div class="control-group">
-            <h3>Fine Tuning</h3>
-            <label>Step Size:</label>
-            <select id="stepSize">
-                <option value="0.001">0.001° (~110m)</option>
-                <option value="0.01" selected>0.01° (~1.1km)</option>
-                <option value="0.1">0.1° (~11km)</option>
-                <option value="1">1° (~111km)</option>
-            </select>
-
-            <div style="margin-top: 10px;">
-                <button class="btn-secondary" onclick="adjustBounds('north', 1)">▲ North +</button>
-                <div style="display: flex; gap: 5px; margin: 5px 0;">
-                    <button class="btn-secondary" style="flex: 1;" onclick="adjustBounds('west', -1)">◀ West -</button>
-                    <button class="btn-secondary" style="flex: 1;" onclick="adjustBounds('east', 1)">East + ▶</button>
-                </div>
-                <button class="btn-secondary" onclick="adjustBounds('south', -1)">▼ South -</button>
-            </div>
-        </div>
-
-        <div class="control-group">
             <h3>Presets</h3>
-            <button class="btn-primary" onclick="loadPreset('current')">Load Current Bounds</button>
-            <button class="btn-primary" onclick="loadPreset('calculated')">Load Calculated Bounds</button>
-            <button class="btn-secondary" onclick="resetBounds()">Reset to Default</button>
+            <button class="btn-primary" onclick="resetAll()">Reset All to Default</button>
+            <button class="btn-primary" onclick="resetPosition()">Reset Position Only</button>
+            <button class="btn-primary" onclick="resetScale()">Reset Scale Only</button>
         </div>
 
         <div class="control-group">
             <h3>Export Settings</h3>
-            <button class="btn-success" onclick="copyBounds()">📋 Copy Bounds to Clipboard</button>
+            <button class="btn-success" onclick="copyBounds()">📋 Copy Final Bounds</button>
             <button class="btn-success" onclick="exportJSON()">💾 Export as JSON</button>
             <div id="output"></div>
         </div>
 
         <div class="info">
             <strong>Tips:</strong><br>
-            • Use sliders for rough adjustments<br>
-            • Use arrow buttons for fine-tuning<br>
-            • Compare image edges with red boundary<br>
-            • When aligned, copy bounds to update test-data.json
+            • Use Position sliders to move images without changing size<br>
+            • Use Scale sliders to resize images<br>
+            • Use Base Bounds to set starting dimensions<br>
+            • Both images move together as one unit<br>
+            • Export final bounds when perfectly aligned
         </div>
     </div>
 
@@ -220,8 +245,16 @@
 
         // State
         let imageOverlays = [];
-        let boundaryPolygon = null;
+        let boundaryPolygons = [];
         let boundaryData = null;
+
+        // Base bounds (reference)
+        const defaultBounds = {
+            west: -179.985341,
+            south: 40.834286,
+            east: 180.014659,
+            north: 81.460175
+        };
 
         // Load test data
         fetch('test-data.json')
@@ -231,37 +264,73 @@
                 updateMap();
             });
 
+        function calculateFinalBounds() {
+            // Get base bounds
+            const baseWest = parseFloat(document.getElementById('west').value);
+            const baseSouth = parseFloat(document.getElementById('south').value);
+            const baseEast = parseFloat(document.getElementById('east').value);
+            const baseNorth = parseFloat(document.getElementById('north').value);
+
+            // Get offsets
+            const offsetX = parseFloat(document.getElementById('offsetX').value);
+            const offsetY = parseFloat(document.getElementById('offsetY').value);
+
+            // Get scales
+            const scaleX = parseFloat(document.getElementById('scaleX').value);
+            const scaleY = parseFloat(document.getElementById('scaleY').value);
+
+            // Calculate center
+            const centerLon = (baseWest + baseEast) / 2;
+            const centerLat = (baseSouth + baseNorth) / 2;
+
+            // Calculate width and height
+            const width = (baseEast - baseWest) * scaleX;
+            const height = (baseNorth - baseSouth) * scaleY;
+
+            // Apply offset to center
+            const newCenterLon = centerLon + offsetX;
+            const newCenterLat = centerLat + offsetY;
+
+            // Calculate final bounds
+            const finalWest = newCenterLon - width / 2;
+            const finalEast = newCenterLon + width / 2;
+            const finalSouth = newCenterLat - height / 2;
+            const finalNorth = newCenterLat + height / 2;
+
+            return {
+                west: finalWest,
+                south: finalSouth,
+                east: finalEast,
+                north: finalNorth
+            };
+        }
+
         function updateMap() {
             // Remove existing overlays
             imageOverlays.forEach(overlay => map.removeLayer(overlay));
             imageOverlays = [];
-            if (boundaryPolygon) {
-                map.removeLayer(boundaryPolygon);
-                boundaryPolygon = null;
-            }
+            boundaryPolygons.forEach(poly => map.removeLayer(poly));
+            boundaryPolygons = [];
 
-            // Get current bounds
-            const west = parseFloat(document.getElementById('west').value);
-            const south = parseFloat(document.getElementById('south').value);
-            const east = parseFloat(document.getElementById('east').value);
-            const north = parseFloat(document.getElementById('north').value);
+            const finalBounds = calculateFinalBounds();
             const opacity = parseInt(document.getElementById('opacity').value) / 100;
 
-            // Add images if enabled (4-way wrapping for both western and eastern)
+            // Add images if enabled (both western and eastern move together)
             if (document.getElementById('showImage').checked) {
                 const images = [
                     'images/alaska_hrrr_western.webp',
                     'images/alaska_hrrr_eastern.webp'
                 ];
 
+                // 4-way wrapping
                 const wraps = [
-                    [[south, west], [north, east]],
-                    [[south, west + 360], [north, east + 360]],
-                    [[south, west - 360], [north, east - 360]],
-                    [[south, west + 720], [north, east + 720]]
+                    [[finalBounds.south, finalBounds.west], [finalBounds.north, finalBounds.east]],
+                    [[finalBounds.south, finalBounds.west + 360], [finalBounds.north, finalBounds.east + 360]],
+                    [[finalBounds.south, finalBounds.west - 360], [finalBounds.north, finalBounds.east - 360]],
+                    [[finalBounds.south, finalBounds.west + 720], [finalBounds.north, finalBounds.east + 720]]
                 ];
 
-                // Add both western and eastern images with same bounds (they move together)
+                // Add both images with same bounds (they move as one)
                 images.forEach(imageUrl => {
                     wraps.forEach(bounds => {
                         const overlay = L.imageOverlay(imageUrl, bounds, {
@@ -275,34 +344,44 @@
 
             // Add boundary if enabled
             if (document.getElementById('showBoundary').checked && boundaryData) {
-                const coords = boundaryData.map(p => [p.lat, p.lon]);
-                boundaryPolygon = L.polygon(coords, {
-                    color: '#ff0000',
-                    weight: 2,
-                    fillOpacity: 0,
-                    interactive: false
-                }).addTo(map);
+                const offsets = [0, -360, 360, -720, 720];
 
-                // Add wrapped versions
-                [-360, 360, -720, 720].forEach(offset => {
-                    const wrappedCoords = boundaryData.map(p => [p.lat, p.lon + offset]);
-                    L.polygon(wrappedCoords, {
+                offsets.forEach(offset => {
+                    const coords = boundaryData.map(p => [p.lat, p.lon + offset]);
+                    const poly = L.polygon(coords, {
                         color: '#ff0000',
                         weight: 2,
                         fillOpacity: 0,
                         interactive: false
                     }).addTo(map);
+                    boundaryPolygons.push(poly);
                 });
             }
         }
 
-        // Event listeners
-        ['west', 'south', 'east', 'north'].forEach(id => {
+        function updateDisplay(id) {
+            const value = document.getElementById(id).value;
+            const precision = id.includes('scale') ? 3 : (id.includes('offset') ? 3 : 6);
+            document.getElementById(id + 'Value').textContent = parseFloat(value).toFixed(precision);
+
+            // Update km display for offsets
+            if (id === 'offsetX') {
+                const km = (parseFloat(value) * 111.32).toFixed(1);
+                document.getElementById('offsetXKm').textContent = km;
+            } else if (id === 'offsetY') {
+                const km = (parseFloat(value) * 110.57).toFixed(1);
+                document.getElementById('offsetYKm').textContent = km;
+            }
+        }
+
+        // Event listeners for all controls
+        ['west', 'south', 'east', 'north', 'offsetX', 'offsetY', 'scaleX', 'scaleY'].forEach(id => {
             const slider = document.getElementById(id);
             slider.addEventListener('input', function() {
-                document.getElementById(id + 'Value').textContent = this.value;
+                updateDisplay(id);
                 updateMap();
             });
+            updateDisplay(id); // Initialize display
         });
 
         document.getElementById('opacity').addEventListener('input', function() {
@@ -313,46 +392,60 @@
         document.getElementById('showImage').addEventListener('change', updateMap);
         document.getElementById('showBoundary').addEventListener('change', updateMap);
 
-        function adjustBounds(direction, multiplier) {
-            const step = parseFloat(document.getElementById('stepSize').value);
-            const slider = document.getElementById(direction);
-            const newValue = parseFloat(slider.value) + (step * multiplier);
-            slider.value = newValue.toFixed(6);
-            document.getElementById(direction + 'Value').textContent = slider.value;
+        function adjustOffset(axis, delta) {
+            const id = 'offset' + axis;
+            const slider = document.getElementById(id);
+            const newValue = parseFloat(slider.value) + delta;
+            slider.value = newValue;
+            updateDisplay(id);
             updateMap();
         }
 
-        function loadPreset(type) {
-            if (type === 'current') {
-                // Bounds from test-data.json (current calculated)
-                setBounds(-179.985341, 40.834286, 180.014659, 81.460175);
-            } else if (type === 'calculated') {
-                // Original calculated bounds
-                setBounds(-179.985341, 40.834286, 180.014659, 81.460175);
+        function adjustScale(type, delta) {
+            if (type === 'both') {
+                ['scaleX', 'scaleY'].forEach(id => {
+                    const slider = document.getElementById(id);
+                    const newValue = Math.max(0.5, Math.min(1.5, parseFloat(slider.value) + delta));
+                    slider.value = newValue;
+                    updateDisplay(id);
+                });
             }
-        }
-
-        function setBounds(west, south, east, north) {
-            document.getElementById('west').value = west;
-            document.getElementById('south').value = south;
-            document.getElementById('east').value = east;
-            document.getElementById('north').value = north;
-
-            document.getElementById('westValue').textContent = west;
-            document.getElementById('southValue').textContent = south;
-            document.getElementById('eastValue').textContent = east;
-            document.getElementById('northValue').textContent = north;
-
             updateMap();
         }
 
-        function resetBounds() {
-            setBounds(-179.985341, 40.834286, 180.014659, 81.460175);
+        function resetAll() {
+            document.getElementById('west').value = defaultBounds.west;
+            document.getElementById('south').value = defaultBounds.south;
+            document.getElementById('east').value = defaultBounds.east;
+            document.getElementById('north').value = defaultBounds.north;
+            document.getElementById('offsetX').value = 0;
+            document.getElementById('offsetY').value = 0;
+            document.getElementById('scaleX').value = 1;
+            document.getElementById('scaleY').value = 1;
+
+            ['west', 'south', 'east', 'north', 'offsetX', 'offsetY', 'scaleX', 'scaleY'].forEach(updateDisplay);
+            updateMap();
+        }
+
+        function resetPosition() {
+            document.getElementById('offsetX').value = 0;
+            document.getElementById('offsetY').value = 0;
+            updateDisplay('offsetX');
+            updateDisplay('offsetY');
+            updateMap();
+        }
+
+        function resetScale() {
+            document.getElementById('scaleX').value = 1;
+            document.getElementById('scaleY').value = 1;
+            updateDisplay('scaleX');
+            updateDisplay('scaleY');
+            updateMap();
         }
 
         function copyBounds() {
-            const bounds = getBounds();
-            const text = `[${bounds.west}, ${bounds.south}, ${bounds.east}, ${bounds.north}]`;
+            const bounds = calculateFinalBounds();
+            const text = `[${bounds.west.toFixed(6)}, ${bounds.south.toFixed(6)}, ${bounds.east.toFixed(6)}, ${bounds.north.toFixed(6)}]`;
 
             navigator.clipboard.writeText(text).then(() => {
                 document.getElementById('output').textContent = 'Copied to clipboard!\n\n' + text;
@@ -360,14 +453,25 @@
         }
 
         function exportJSON() {
-            const bounds = getBounds();
+            const bounds = calculateFinalBounds();
             const output = {
-                bounds: [bounds.west, bounds.south, bounds.east, bounds.north],
-                leaflet_format: {
-                    west: bounds.west,
-                    south: bounds.south,
-                    east: bounds.east,
-                    north: bounds.north
+                bounds: [
+                    parseFloat(bounds.west.toFixed(6)),
+                    parseFloat(bounds.south.toFixed(6)),
+                    parseFloat(bounds.east.toFixed(6)),
+                    parseFloat(bounds.north.toFixed(6))
+                ],
+                adjustments: {
+                    offsetX: parseFloat(document.getElementById('offsetX').value),
+                    offsetY: parseFloat(document.getElementById('offsetY').value),
+                    scaleX: parseFloat(document.getElementById('scaleX').value),
+                    scaleY: parseFloat(document.getElementById('scaleY').value)
+                },
+                base_bounds: {
+                    west: parseFloat(document.getElementById('west').value),
+                    south: parseFloat(document.getElementById('south').value),
+                    east: parseFloat(document.getElementById('east').value),
+                    north: parseFloat(document.getElementById('north').value)
                 },
                 notes: 'Manually adjusted bounds from interactive tool'
             };
@@ -376,16 +480,7 @@
             document.getElementById('output').textContent = text;
 
             // Also copy to clipboard
-            navigator.clipboard.writeText(text);
-        }
-
-        function getBounds() {
-            return {
-                west: parseFloat(document.getElementById('west').value),
-                south: parseFloat(document.getElementById('south').value),
-                east: parseFloat(document.getElementById('east').value),
-                north: parseFloat(document.getElementById('north').value)
-            };
+            navigator.clipboard.writeText(JSON.stringify(output.bounds));
         }
     </script>
 </body>
