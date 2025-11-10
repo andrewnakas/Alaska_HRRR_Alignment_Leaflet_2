@@ -259,49 +259,52 @@
             clearLayers();
 
             // Create image overlays with date-line wrapping
-            // The key insight: Alaska crosses the date line, so we need to display
-            // the western and eastern images in multiple copies at different longitudes
+            // Using combined image (western + eastern merged into one)
+            // Alaska crosses the date line, so we display multiple copies at different longitudes
+
+            const combinedImageUrl = 'images/alaska_hrrr_combined.webp';
+            const bounds = alaska.western.bounds; // Use same bounds for combined image
 
             const images = [
-                // Western hemisphere - original position
+                // Original position
                 {
-                    url: alaska.western.image_url,
+                    url: combinedImageUrl,
                     bounds: [
-                        [alaska.western.bounds[1], alaska.western.bounds[0]], // SW corner
-                        [alaska.western.bounds[3], alaska.western.bounds[2]]  // NE corner
+                        [bounds[1], bounds[0]], // SW corner
+                        [bounds[3], bounds[2]]  // NE corner
                     ],
-                    label: 'Western (original)',
-                    color: 'red'
+                    label: 'Combined (original)',
+                    color: 'purple'
                 },
-                // Western hemisphere - wrapped +360 for continuity
+                // Wrapped +360 for continuity
                 {
-                    url: alaska.western.image_url,
+                    url: combinedImageUrl,
                     bounds: [
-                        [alaska.western.bounds[1], alaska.western.bounds[0] + 360],
-                        [alaska.western.bounds[3], alaska.western.bounds[2] + 360]
+                        [bounds[1], bounds[0] + 360],
+                        [bounds[3], bounds[2] + 360]
                     ],
-                    label: 'Western (+360)',
-                    color: 'darkred'
+                    label: 'Combined (+360)',
+                    color: 'darkviolet'
                 },
-                // Eastern hemisphere - original position
+                // Wrapped -360 for continuity
                 {
-                    url: alaska.eastern.image_url,
+                    url: combinedImageUrl,
                     bounds: [
-                        [alaska.eastern.bounds[1], alaska.eastern.bounds[0]],
-                        [alaska.eastern.bounds[3], alaska.eastern.bounds[2]]
+                        [bounds[1], bounds[0] - 360],
+                        [bounds[3], bounds[2] - 360]
                     ],
-                    label: 'Eastern (original)',
-                    color: 'blue'
+                    label: 'Combined (-360)',
+                    color: 'indigo'
                 },
-                // Eastern hemisphere - wrapped -360 for continuity
+                // Wrapped +720 for extra continuity
                 {
-                    url: alaska.eastern.image_url,
+                    url: combinedImageUrl,
                     bounds: [
-                        [alaska.eastern.bounds[1], alaska.eastern.bounds[0] - 360],
-                        [alaska.eastern.bounds[3], alaska.eastern.bounds[2] - 360]
+                        [bounds[1], bounds[0] + 720],
+                        [bounds[3], bounds[2] + 720]
                     ],
-                    label: 'Eastern (-360)',
-                    color: 'darkblue'
+                    label: 'Combined (+720)',
+                    color: 'mediumorchid'
                 }
             ];
 
