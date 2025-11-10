@@ -134,13 +134,13 @@
 
             <div class="slider-container">
                 <label>Horizontal Offset (East/West)</label>
-                <input type="range" id="offsetX" min="-10" max="10" step="0.001" value="0">
+                <input type="range" id="offsetX" min="-50" max="50" step="0.001" value="0">
                 <div class="value-display"><span id="offsetXValue">0.000</span>° (<span id="offsetXKm">0</span> km)</div>
             </div>
 
             <div class="slider-container">
                 <label>Vertical Offset (North/South)</label>
-                <input type="range" id="offsetY" min="-10" max="10" step="0.001" value="0">
+                <input type="range" id="offsetY" min="-50" max="50" step="0.001" value="0">
                 <div class="value-display"><span id="offsetYValue">0.000</span>° (<span id="offsetYKm">0</span> km)</div>
             </div>
 
@@ -180,25 +180,25 @@
 
             <div class="slider-container">
                 <label>West (Left Edge)</label>
-                <input type="range" id="west" min="-200" max="-160" step="0.01" value="-179.985341">
+                <input type="range" id="west" min="-250" max="-100" step="0.01" value="-179.985341">
                 <div class="value-display"><span id="westValue">-179.985341</span>°</div>
             </div>
 
             <div class="slider-container">
                 <label>South (Bottom Edge)</label>
-                <input type="range" id="south" min="35" max="45" step="0.01" value="40.834286">
+                <input type="range" id="south" min="0" max="60" step="0.01" value="40.834286">
                 <div class="value-display"><span id="southValue">40.834286</span>°</div>
             </div>
 
             <div class="slider-container">
                 <label>East (Right Edge)</label>
-                <input type="range" id="east" min="160" max="200" step="0.01" value="180.014659">
+                <input type="range" id="east" min="100" max="250" step="0.01" value="180.014659">
                 <div class="value-display"><span id="eastValue">180.014659</span>°</div>
             </div>
 
             <div class="slider-container">
                 <label>North (Top Edge)</label>
-                <input type="range" id="north" min="40" max="85" step="0.01" value="81.460175">
+                <input type="range" id="north" min="40" max="90" step="0.01" value="81.460175">
                 <div class="value-display"><span id="northValue">81.460175</span>°</div>
             </div>
         </div>
@@ -334,16 +334,19 @@
             if (document.getElementById('showImage').checked) {
                 const imageUrl = 'images/alaska_hrrr_western.webp';
 
-                // 4-way wrapping - same bounds for all wraps to tile seamlessly
-                const wraps = [
-                    [[finalBounds.south, finalBounds.west], [finalBounds.north, finalBounds.east]],
-                    [[finalBounds.south, finalBounds.west + 360], [finalBounds.north, finalBounds.east + 360]],
-                    [[finalBounds.south, finalBounds.west - 360], [finalBounds.north, finalBounds.east - 360]],
-                    [[finalBounds.south, finalBounds.west + 720], [finalBounds.north, finalBounds.east + 720]]
-                ];
+                // Calculate width once to ensure all wraps have IDENTICAL dimensions
+                const width = finalBounds.east - finalBounds.west;
+                const height = finalBounds.north - finalBounds.south;
 
-                // Add single image with all 4 wraps
-                wraps.forEach(bounds => {
+                // 4-way wrapping - ensuring exact same width/height for all wraps
+                // This prevents any separation or misalignment
+                const wrapOffsets = [0, 360, -360, 720];
+
+                wrapOffsets.forEach(offset => {
+                    const west = finalBounds.west + offset;
+                    const east = west + width;  // Use calculated width, not finalBounds.east
+                    const bounds = [[finalBounds.south, west], [finalBounds.north, east]];
+
                     const overlay = L.imageOverlay(imageUrl, bounds, {
                         opacity: opacity,
                         interactive: false
