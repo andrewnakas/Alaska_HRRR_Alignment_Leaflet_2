@@ -154,7 +154,7 @@
 
             <div class="slider-container">
                 <label>North (Top Edge)</label>
-                <input type="range" id="north" min="75" max="85" step="0.01" value="81.460175">
+                <input type="range" id="north" min="40" max="85" step="0.01" value="81.460175">
                 <div class="value-display"><span id="northValue">81.460175</span>°</div>
             </div>
         </div>
@@ -247,9 +247,12 @@
             const north = parseFloat(document.getElementById('north').value);
             const opacity = parseInt(document.getElementById('opacity').value) / 100;
 
-            // Add images if enabled (4-way wrapping)
+            // Add images if enabled (4-way wrapping for both western and eastern)
             if (document.getElementById('showImage').checked) {
-                const imageUrl = 'images/alaska_hrrr_western.webp';
+                const images = [
+                    'images/alaska_hrrr_western.webp',
+                    'images/alaska_hrrr_eastern.webp'
+                ];
 
                 const wraps = [
                     [[south, west], [north, east]],
@@ -258,12 +261,15 @@
                     [[south, west + 720], [north, east + 720]]
                 ];
 
-                wraps.forEach(bounds => {
-                    const overlay = L.imageOverlay(imageUrl, bounds, {
-                        opacity: opacity,
-                        interactive: false
-                    }).addTo(map);
-                    imageOverlays.push(overlay);
+                // Add both western and eastern images with same bounds (they move together)
+                images.forEach(imageUrl => {
+                    wraps.forEach(bounds => {
+                        const overlay = L.imageOverlay(imageUrl, bounds, {
+                            opacity: opacity,
+                            interactive: false
+                        }).addTo(map);
+                        imageOverlays.push(overlay);
+                    });
                 });
             }
 
