@@ -330,28 +330,35 @@
                 `North: ${finalBounds.north.toFixed(6)}°<br>` +
                 `<small style="color: #6c757d;">Width: ${(finalBounds.east - finalBounds.west).toFixed(3)}°</small>`;
 
-            // Add single image with 4-way wrapping
+            // Add BOTH images (western + eastern) with 4-way wrapping
+            // CRITICAL: Both images use IDENTICAL bounds and move as ONE unit
             if (document.getElementById('showImage').checked) {
-                const imageUrl = 'images/alaska_hrrr_western.webp';
+                // Both western and eastern images - they overlay with same bounds
+                const images = [
+                    'images/alaska_hrrr_western.webp',
+                    'images/alaska_hrrr_eastern.webp'
+                ];
 
                 // Calculate width once to ensure all wraps have IDENTICAL dimensions
                 const width = finalBounds.east - finalBounds.west;
                 const height = finalBounds.north - finalBounds.south;
 
-                // 4-way wrapping - ensuring exact same width/height for all wraps
-                // This prevents any separation or misalignment
+                // 4-way wrapping offsets
                 const wrapOffsets = [0, 360, -360, 720];
 
-                wrapOffsets.forEach(offset => {
-                    const west = finalBounds.west + offset;
-                    const east = west + width;  // Use calculated width, not finalBounds.east
-                    const bounds = [[finalBounds.south, west], [finalBounds.north, east]];
+                // Add BOTH images for each wrap - all use EXACT SAME bounds
+                images.forEach(imageUrl => {
+                    wrapOffsets.forEach(offset => {
+                        const west = finalBounds.west + offset;
+                        const east = west + width;  // Use calculated width for consistency
+                        const bounds = [[finalBounds.south, west], [finalBounds.north, east]];
 
-                    const overlay = L.imageOverlay(imageUrl, bounds, {
-                        opacity: opacity,
-                        interactive: false
-                    }).addTo(map);
-                    imageOverlays.push(overlay);
+                        const overlay = L.imageOverlay(imageUrl, bounds, {
+                            opacity: opacity,
+                            interactive: false
+                        }).addTo(map);
+                        imageOverlays.push(overlay);
+                    });
                 });
             }
 
